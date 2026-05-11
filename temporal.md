@@ -377,3 +377,9 @@ Although Temporal applications are frequently used to manage [non-deterministic]
 #### Versioning
 
 Since Workflow Executions in Temporal can run for long periods, it's common to need major changes to a Workflow Definition, even while a particular Workflow Execution is in progress. For example, imagine that your Workflow currently notifies a customer when an order is shipped with an e-mail notification. Later, you decide to change the Workflow so that it sends both an email and a text message instead. Versioning is a feature in Temporal that helps manage these code changes safely. With Versioning, you can modify your Workflow Definition so that new executions use the updated code, while existing ones continue running the original version. This is particularly useful when you make a Workflow code change that would otherwise break replay compatibility for already-running Workflow Executions, such as changing the order of execution or adding/removing Workflow steps. These are considered non-deterministic changes because replaying existing Workflow history against the modified Workflow Definition would cause the Workflow to make different decisions than it originally did. You can use the SDK’s ["Versioning"](https://docs.temporal.io/develop/python/versioning) feature to identify when a non-deterministic change is introduced.
+
+#### Restarting the Worker Process
+
+After making changes to your application, you'll need to deploy them to the server.
+
+With most Temporal SDKs, you must restart the Worker for your code changes to take effect. While the Python SDK uses a sandbox which automatically reloads the Workflow from disk each execution, making this restart unnecessary, this is an implementation detail specific to the Temporal Python SDK and may change in the future. Therefore, to ensure proper execution, we recommend stopping your worker and restarting it every time you make a change to your code.
