@@ -288,3 +288,77 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+## Viewing Workflow Execution History
+
+We showed earlier that we could do `temporal workflow show --workflow-id my-first-workflow`. We can also add a `--detailed` flag to the end of that for a more verbose and detailed result:
+
+```sh
+--------------- [1] WorkflowExecutionStarted ---------------
+attempt: 1
+eventTime: 2026-05-11T22:11:58.935390Z
+firstExecutionRunId: 019e1918-d757-75ef-ac3a-8b4fa9642b1a
+firstWorkflowTaskBackoff: 0s
+identity: temporal-cli:liquort@ADSKP6P2GVHL7H
+input[0]: Tyler
+originalExecutionRunId: 019e1918-d757-75ef-ac3a-8b4fa9642b1a
+taskId: 1048624
+taskQueue.kind: TASK_QUEUE_KIND_NORMAL
+taskQueue.name: greeting-tasks
+workflowExecutionTimeout: 0s
+workflowId: test-workflow-2
+workflowRunTimeout: 0s
+workflowTaskTimeout: 10s
+workflowType.name: GreetSomeone
+
+--------------- [2] WorkflowTaskScheduled ---------------
+attempt: 1
+eventTime: 2026-05-11T22:11:58.935460Z
+startToCloseTimeout: 10s
+taskId: 1048625
+taskQueue.kind: TASK_QUEUE_KIND_NORMAL
+taskQueue.name: greeting-tasks
+
+--------------- [3] WorkflowTaskStarted ---------------
+eventTime: 2026-05-11T22:11:58.937710Z
+historySizeBytes: 302
+identity: 31226@ADSKP6P2GVHL7H
+requestId: 3e8ea4da-dd3d-4256-80e5-2e0119f5e388
+scheduledEventId: 2
+taskId: 1048630
+workerVersion.buildId: 967b46b914ad2aa32e44861d5347d2cc
+
+--------------- [4] WorkflowTaskCompleted ---------------
+eventTime: 2026-05-11T22:11:58.942618Z
+identity: 31226@ADSKP6P2GVHL7H
+scheduledEventId: 2
+sdkMetadata.coreUsedFlags[0]: 1
+sdkMetadata.coreUsedFlags[1]: 2
+startedEventId: 3
+taskId: 1048634
+workerVersion.buildId: 967b46b914ad2aa32e44861d5347d2cc
+
+--------------- [5] WorkflowExecutionCompleted ---------------
+eventTime: 2026-05-11T22:11:58.942649Z
+result[0]: Hello Tyler!
+taskId: 1048635
+workflowTaskCompletedEventId: 4
+
+Results:
+  Status          COMPLETED
+  Result          "Hello Tyler!"
+  ResultEncoding  json/plain
+```
+
+This becomes unwieldy when you have lots of workflows. Its much easier to view workflow execution through the Web UI.
+
+The method you use to access it for your own Temporal instance will vary based on the type of deployment. For example, if you're using Temporal Cloud, you'll access it through a secured connection to the standard HTTPS port on `cloud.temporal.io`, which will require you to log in.
+
+If you used `temporal` to deploy a development cluster to your laptop, you can access it through localhost on port 8233, (or whatever port you configured the Temporal UI to run on). If you're using a self-hosted production cluster, ask your administrator for the hostname and port number.
+
+![Workflow Execution Web UI](./images/workflow-execution-web-ui.png)
+
+> Note: the Web UI shows a table of Workflow Executions within a given **namespace**. A namespace provides a means of isolation within Temporal, much like how namespaces or packages in some programming languages provide isolation between different parts of the code. They allow you to logically separate things, using whatever criteria meets your needs. For example, you might isolate Workflows based on their status by having a "development" namespace and a "production" namespace. Or you might separate them by team or department, in which case you might have one namespace for Marketing and another for Accounting. One aspect of this isolation is that some configuration options or concepts are applied on a per-namespace level, rather than the entire cluster. For example, Temporal guarantees that there is only one Workflow Execution with a given Workflow ID currently running within any given namespace. The default namespace is named `default`, and you can use `temporal` to register additional namespaces and your code will specify the namespace it wants to use using a configuration option provided when creating a client.
+
+
+

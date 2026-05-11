@@ -183,8 +183,9 @@
       "bases:Create new base": false
     }
   },
-  "active": "458bc8caa7b91658",
+  "active": "1b1458f175c41ec7",
   "lastOpenFiles": [
+    "images/workflow-execution-web-ui.png",
     "temporal.md",
     "exercises/hello-workflow/practice/__pycache__/worker.cpython-313.pyc",
     "exercises/hello-workflow/practice/__pycache__/greeting.cpython-313.pyc",
@@ -228,7 +229,6 @@
     "env/lib/python3.13/site-packages/~emporalio/contrib/langsmith/images/langsmith-with-temporal.png",
     "env/lib/python3.13/site-packages/~emporalio/contrib/langsmith/images/langsmith-with-crash-no-temporal.png",
     "env/lib/python3.13/site-packages/~emporalio/contrib/langsmith/images/langsmith-no-temporal.png",
-    "env/lib/python3.13/site-packages/~emporalio/bridge/sdk-core/arch_docs/workflow_task_chunking.md",
     "env/lib/python3.13/site-packages/werkzeug/debug/shared/more.png",
     "env/lib/python3.13/site-packages/werkzeug/debug/shared/less.png"
   ]
