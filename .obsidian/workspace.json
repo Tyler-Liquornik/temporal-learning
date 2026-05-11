@@ -1,0 +1,231 @@
+{
+  "main": {
+    "id": "fac67a6fedff66d2",
+    "type": "split",
+    "children": [
+      {
+        "id": "7818dc7656cfcf2b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "458bc8caa7b91658",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "temporal.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "temporal"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "4af6599b8b772d40",
+    "type": "split",
+    "children": [
+      {
+        "id": "75780688050e1e0a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1b1458f175c41ec7",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "6270df9d7359631e",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "eaf195cbc5541a3a",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "892a247b13062e75",
+    "type": "split",
+    "children": [
+      {
+        "id": "43d6353fcb601c64",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0522aef87525e5d5",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "temporal.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for temporal"
+            }
+          },
+          {
+            "id": "51563f0e8f6dddac",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "temporal.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from temporal"
+            }
+          },
+          {
+            "id": "784c6b6ab50d5f5e",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "e76dd58a0af2087a",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "cd5537044fad15ea",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "temporal.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of temporal"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "458bc8caa7b91658",
+  "lastOpenFiles": [
+    "style.css",
+    "samples/retry-policy/greeting.py",
+    "samples/greeting/workflow.py",
+    "samples/greeting/starter.py",
+    "samples/greeting/README.md",
+    "samples/retry-policy",
+    "samples/greeting",
+    "samples",
+    "requirements.txt",
+    "exercises/hello-workflow/practice/worker.py",
+    "exercises/hello-workflow/practice/greeting.py",
+    "exercises/hello-workflow/solution/worker.py",
+    "exercises/hello-workflow/README.md",
+    "exercises/hello-web-ui/README.md",
+    "exercises/finale-workflow/README.md",
+    "exercises/farewell-workflow/README.md",
+    "demos/service-workflow/README.md",
+    "edu-101-python-code-main/exercises/hello-web-ui/README.md",
+    "edu-101-python-code-main/exercises/hello-workflow/README.md",
+    "edu-101-python-code-main/exercises/farewell-workflow/README.md",
+    "edu-101-python-code-main/exercises/finale-workflow/README.md",
+    "edu-101-python-code-main/samples/greeting/README.md",
+    "edu-101-python-code-main/demos/service-workflow/README.md",
+    "edu-101-python-code-main/codespaces.md",
+    "edu-101-python-code-main/README.md",
+    "env/lib/python3.13/site-packages/temporalio/contrib/workflow_streams/README.md",
+    "env/lib/python3.13/site-packages/temporalio/contrib/aws/s3driver/README.md",
+    "env/lib/python3.13/site-packages/temporalio/contrib/aws/lambda_worker/README.md",
+    "env/lib/python3.13/site-packages/temporalio/contrib/langsmith/images/langsmith-with-crash-no-temporal.png",
+    "env/lib/python3.13/site-packages/temporalio/contrib/langsmith/images/temporal-ui.png",
+    "env/lib/python3.13/site-packages/temporalio/contrib/langsmith/images/langsmith-with-temporal.png",
+    "env/lib/python3.13/site-packages/temporalio/contrib/langsmith/images/langsmith-no-temporal.png",
+    "env/lib/python3.13/site-packages/temporalio/contrib/opentelemetry/README.md",
+    "env/lib/python3.13/site-packages/temporalio/contrib/openai_agents/README.md",
+    "env/lib/python3.13/site-packages/temporalio/contrib/langsmith/README.md",
+    "env/lib/python3.13/site-packages/temporalio/contrib/google_adk_agents/README.md",
+    "env/lib/python3.13/site-packages/temporalio/contrib/langgraph/README.md",
+    "env/lib/python3.13/site-packages/temporalio/bridge/sdk-core/arch_docs/diagrams/initial_event_history.png",
+    "env/lib/python3.13/site-packages/temporalio/bridge/sdk-core/arch_docs/diagrams/deps.svg",
+    "env/lib/python3.13/site-packages/temporalio/bridge/sdk-core/arch_docs/diagrams/README.md",
+    "env/lib/python3.13/site-packages/temporalio/bridge/sdk-core/arch_docs/sticky_queues.md",
+    "env/lib/python3.13/site-packages/temporalio/bridge/sdk-core/arch_docs/workflow_task_chunking.md"
+  ]
+}
