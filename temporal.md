@@ -383,3 +383,417 @@ Since Workflow Executions in Temporal can run for long periods, it's common to n
 After making changes to your application, you'll need to deploy them to the server.
 
 With most Temporal SDKs, you must restart the Worker for your code changes to take effect. While the Python SDK uses a sandbox which automatically reloads the Workflow from disk each execution, making this restart unnecessary, this is an implementation detail specific to the Temporal Python SDK and may change in the future. Therefore, to ensure proper execution, we recommend stopping your worker and restarting it every time you make a change to your code.
+
+## Developing an Activity
+
+In Temporal, you can use **Activities** to encapsulate business logic that is prone to failure. Unlike the Workflow Definition, there is no requirement for an Activity Definition to be deterministic. In general, any operation that introduces the possibility of failure should be done as part of an Activity, rather than as part of the Workflow directly. While Activities are executed as part of Workflow Execution, they have an important characteristic: they're retried if they fail. If you have an extensive Workflow that needs to access a service, and that service happens to become unavailable, you don't want to re-run the entire Workflow. Instead, you just want to retry the part that failed, so you can define that code in an Activity and reference it in your Workflow Definition. The code within that Activity Definition will be executed, retried if necessary, and the Workflow will continue its progress once the Activity completes successfully.
+
+An Activity Definition in Python can be implemented multiple ways. One way is to implement the Activity as a function decorated with the `@activity.defn` decorator.
+
+```python
+from temporalio import activity
+
+@activity.defn
+async def greet_in_french(name: str) -> str:
+    return f"Bonjour {name}!"
+```
+
+Activities in Python can be implemented either as functions or as methods within a class that groups activities, depending on your needs. For example, if you need to pass a client session for performing HTTP requests:
+
+```python
+class TranslateActivities:
+    def __init__(self, session: aiohttp.ClientSession):
+        self.session = session
+
+    @activity.defn
+    async def greet_in_spanish(self, name: str, stem: str) -> str:
+        base = f"http://localhost:9999/{stem}"
+        url = f"{base}?name={urllib.parse.quote(name)}"
+
+        async with self.session.get(url) as response:
+            translation = await response.text()
+
+        return translation
+```
+
+Activities have the same rules about types allowed as input parameters and return values as the Workflow Definition. For example, anything that converts to JSON is fine, but things like `datetime`, functions, or other non-serializable data types are not. Temporal doesn't impose rules about how an activity function/method is named. Temporal recommends you keep your Workflow Definitions in a separate file from the rest of your code. Due to the Temporal Python SDK implementation the Workflow Definition file is reloaded on every execution. Minimizing the contents of that file will minimize reloads and improve performance.
+
+#### Asynchronous vs. Synchronous Activity Implementations
+
+The Temporal Python SDK supports multiple ways of implementing an Activity:
+
+- Asynchronously using [`asyncio`](https://docs.python.org/3/library/asyncio.html)
+- Synchronously multithreaded using [`concurrent.futures.ThreadPoolExecutor`](https://docs.python.org/3/library/concurrent.futures.html#threadpoolexecutor)
+- Synchronously multiprocess using [`concurrent.futures.ProcessPoolExecutor`](https://docs.python.org/3/library/concurrent.futures.html#processpoolexecutor) and [`multiprocessing.managers.SyncManager`](https://docs.python.org/3/library/multiprocessing.html#multiprocessing.managers.SyncManager)
+
+> By “synchronous multithreading/multiprocessing”, we mean that the Activity functions themselves are typically implemented as normal blocking Python functions rather than `async def` coroutines using `asyncio`. In these models, concurrency comes from multiple threads or processes rather than from an asynchronous event loop, and incorrectly mixing the two concurrency models can lead to sporadic and unexpected runtime issues.
+
+> Recall that the Global Interpreter Lock (GIL) allows only one thread to execute Python bytecode at a time within a single process. Because of this, multithreading is often best suited for I/O-bound work, such as network or file operations, because threads can release the GIL while waiting on blocking I/O, allowing other threads to make progress. It is less useful for CPU-bound computation, where threads mostly compete for the same GIL. Multiprocessing avoids this limitation because each process has its own Python interpreter and GIL, allowing CPU-bound work to execute truly in parallel across multiple CPU cores.
+
+It is important to implement your Activities using the correct method, otherwise your application may fail in sporadic and unexpected ways. Which one you should use depends on your use case. This section provides guidance to help you choose the best approach.
+
+Careful! Blocking the async event loop in Python would turn your asynchronous program into a synchronous program that executes serially, defeating the entire purpose of using `asyncio`. This can also lead to potential deadlock, and unpredictable behavior that causes tasks to be unable to execute. Debugging these issues can be difficult and time consuming, as locating the source of the blocking call might not always be immediately obvious. Due to this, Python developers must be extra careful to not make blocking calls from within an asynchronous Activity, or use an async safe library to perform these actions. For example, making an HTTP call with the popular `requests` library within an asynchronous Activity would lead to blocking your event loop. If you want to make an HTTP call from within an asynchronous Activity, you should use an async-safe HTTP library such as `aiohttp` or `httpx`. Otherwise, use a synchronous Activity.
+
+Here's an example of an asynchronous activity:
+```python
+import aiohttp
+import urllib.parse
+from temporalio import activity
+
+
+class TranslateActivities:
+    def __init__(self, session: aiohttp.ClientSession):
+        self.session = session
+
+    @activity.defn
+    async def greet_in_spanish(self, name: str) -> str:
+        greeting = await self.call_service("get-spanish-greeting", name)
+        return greeting
+
+    # Utility method for making calls to the microservices
+    async def call_service(self, stem: str, name: str) -> str:
+        base = f"http://localhost:9999/{stem}"
+        url = f"{base}?name={urllib.parse.quote(name)}"
+
+        async with self.session.get(url) as response:
+            translation = await response.text()
+
+            if response.status >= 400:
+                raise ApplicationError(
+                    f"HTTP Error {response.status}: {translation}",
+                    # We want to have Temporal automatically retry 5xx but not 4xx
+                    non_retryable=response.status < 500,
+                )
+
+            return translation
+```
+
+> The `aiohttp` library requires an established `Session` to perform the HTTP request. It would be inefficient to establish a `Session` every time an Activity is invoked, so instead this code accepts a `Session` object as an instance parameter and makes it available to the methods. This approach will also be beneficial when the execution is over and the `Session` needs to be closed.
+
+Here's an example of a synchronous activity using the blocking `requests` library:
+
+```python
+import urllib.parse
+import requests
+from temporalio import activity
+
+
+class TranslateActivities:
+
+    @activity.defn
+    def greet_in_spanish(self, name: str) -> str:
+        greeting = self.call_service("get-spanish-greeting", name)
+        return greeting
+
+    # Utility method for making calls to the microservices
+    def call_service(self, stem: str, name: str) -> str:
+        base = f"http://localhost:9999/{stem}"
+        url = f"{base}?name={urllib.parse.quote(name)}"
+
+        response = requests.get(url)
+        return response.text
+```
+
+In the above example, we chose not to share a `requests.Session` across Activity executions, so `__init__` was removed. While `requests` does support creating sessions, a shared `requests.Session` contains mutable state and does not provide a simple, explicit thread-safety guarantee for all usage. This matters for synchronous threaded Activities because, as noted earlier, multiple threads can have I/O-bound work in flight at the same time and may interleave access to shared objects. Due to no longer having or needing `__init__`, the case could be made here to not implement the Activities as a class, but just as decorated functions:
+
+```python
+@activity.defn
+def greet_in_spanish(name: str) -> str:
+    greeting = call_service("get-spanish-greeting", name)
+    return greeting
+
+# Utility method for making calls to the microservices
+def call_service(stem: str, name: str) -> str:
+    base = f"http://localhost:9999/{stem}"
+    url = f"{base}?name={urllib.parse.quote(name)}"
+
+    response = requests.get(url)
+    return response.text
+```
+
+Asynchronous Activities have many advantages, such as potential speed up of execution. However, as discussed above, making unsafe calls within the async event loop can cause sporadic and difficult to diagnose bugs. For this reason, we recommend using asynchronous Activities _only_ when you are certain that your Activities are async safe and don't make blocking calls. If you experience bugs that you think may be a result of an unsafe call being made in an asynchronous Activity, convert it to a synchronous Activity and see if the  
+issue resolves.
+
+#### Registering Activities
+
+You may recall that you must register your Workflows when initializing the Worker. You must also perform a similar step for Activities. The process for registering the Activity is almost identical to that for registering a Workflow.
+
+If you are registering an Activity implemented as a function, you will import the function from the source file and pass it via a keyword argument, similarly to how you register a workflow.
+
+```python
+from temporalio.client import Client
+from temporalio.worker import Worker
+
+from translate import greet_in_spanish
+from greeting import GreetSomeone
+
+# Code not pertaining to the registration has been omitted
+...
+    worker = Worker(
+        client,
+        task_queue="greeting-tasks",
+        workflows=[GreetSomeone],
+        activities=[greet_in_spanish],
+    )
+...
+```
+
+Here's an example of registering an async activity:
+
+```python
+import asyncio
+import aiohttp
+
+from temporalio.client import Client
+from temporalio.worker import Worker
+
+from translate import TranslateActivities
+from greeting import GreetSomeone
+
+
+async def main():
+    client = await Client.connect("localhost:7233", namespace="default")
+    
+    # Run the worker
+    async with aiohttp.ClientSession() as session:
+        activities = TranslateActivities(session)
+
+        worker = Worker(
+            client,
+            task_queue="greeting-tasks",
+            workflows=[GreetSomeone],
+            activities=[activities.greet_in_spanish],
+        )
+        await worker.run()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+###### Modifying the Worker to Execute Synchronous Activities Concurrently
+
+When executing Synchronous Activities, you must pass an `activity_executor` to the Worker. Currently the Temporal Python SDK supports Thread Pools or Multiprocessing as your Activity Executor. Which one to use is dependent on your use case and deployment. This example will show how to use a `ThreadPoolExecutor` as your Activity Executor.
+
+When using the `ThreadPoolExecutor`, first import `concurrent.futures`. Next, create a `ThreadPoolExecutor` object and specify the maximum number of workers. This number is dependent on the number of `max_concurrent_activities` set by the Worker. Currently, the Worker sets the number of `max_concurrent_activities` to `100` by default. Therefore you should set out `max_workers` option in the `ThreadPoolExecutor` to at least `100`. If you were to set `max_workers` to a value less than the Worker's `max_concurrent_activities` it would be possible for the worker to accept tasks but be unable to process them due to the thread pool being too busy. This could potentially lead to timeouts, so be conscious when setting this value.
+
+If you use a Context Manager for the creation of your `ThreadPoolExecutor` (as we'll show below), be sure to assign the object to a variable using the `as` statement. Finally, pass in your `ThreadPoolExecutor` to the Worker using the `activity_executor` keyword argument.
+
+Here's the finished example:
+```python
+import concurrent.futures
+import asyncio
+
+from temporalio.client import Client
+from temporalio.worker import Worker
+
+from translate import TranslateActivities
+from greeting import GreetSomeone
+
+
+async def main():
+    client = await Client.connect("localhost:7233", namespace="default")
+
+    activities = TranslateActivities()
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=100) as activity_executor:
+        worker = Worker(
+            client,
+            task_queue="greeting-tasks",
+            workflows=[GreetSomeone],
+            activities=[activities.greet_in_spanish, activities.farewell_in_spanish],
+            activity_executor=activity_executor,
+        )
+        print("Starting the worker....")
+        await worker.run()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+###### Executing Asynchronous and Synchronous Activities from the Same Worker
+
+You may run across an instance where you have an Activity that has to make a blocking call but cannot be done in a safe way. This doesn't mean that you have to implement all of your Activities as synchronous. You can implement just that Activity as synchronous and pass it in to the same Worker that executes your asynchronous Activities.
+
+Take the following example, which implements `greet_in_spanish` as an asynchronous Activity and `thank_you_in_spanish` as synchronous Activity:
+
+```python
+import urllib.parse
+import requests
+import aiohttp
+from temporalio import activity
+
+
+class TranslateActivities:
+
+    @activity.defn
+    async def greet_in_spanish(self, name: str) -> str:
+        greeting = await self.call_service_async("get-spanish-greeting", name)
+        return greeting
+    
+    @activity.defn
+    def thank_you_in_spanish(self, name: str) -> str:
+        thank_you = self.call_service_sync("get-spanish-thank-you", name)
+        return thank_you
+
+    # Utility method for making calls to the microservices asynchronously
+    async def call_service_async(self, stem: str, name: str) -> str:
+        # implementation omitted for brevity
+
+    # Utility method for making calls to the microservices synchronously
+    def call_service_sync(self, stem: str, name: str) -> str:
+        # implementation omitted for brevity
+```
+
+You would then implement your Worker similar to below:
+
+```python
+import concurrent.futures
+import aiohttp
+import asyncio
+
+from temporalio.client import Client
+from temporalio.worker import Worker
+
+from translate import TranslateActivities
+from greeting import GreetSomeone
+
+
+async def main():
+    client = await Client.connect("localhost:7233", namespace="default")
+
+    async with aiohttp.ClientSession() as session:
+        activities = TranslateActivities(session)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=100) as activity_executor:
+            worker = Worker(
+                client,
+                task_queue="greeting-tasks",
+                workflows=[GreetSomeone],
+                activities=[activities.greet_in_spanish, activities.thank_you_in_spanish],
+                activity_executor=activity_executor,
+            )
+            print("Starting the worker....")
+            await worker.run()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+#### Executing Activities
+
+###### Importing Modules Into Workflow Files
+
+In the Temporal Python SDK, Workflow files are reloaded in a sandbox for every run. In order to keep from reloading an import on every run, you can mark it as pass through so it reuses the module from outside the sandbox. Standard library modules and `temporalio` modules are passed through by default. All other modules that are used in a deterministic way, such as activity function references or third-party modules, should be passed through this way.
+
+Because of this situation, we recommend keeping your workflow files separate from the rest of your code including input/output types, Activities, etc.
+
+This section of code should be included in your Workflow below your standard library and `temporalio` imports:
+
+```python
+# Import activity, passing it through the sandbox without reloading the module
+with workflow.unsafe.imports_passed_through():
+    from translate import TranslateActivities
+```
+
+###### Specifying Activity Options
+
+A crucial step to executing an Activity as part of your Workflow is to specify the options that govern its execution.
+
+```python
+async def run(self, name: str) -> str:
+    greeting = await workflow.execute_activity_method(
+        TranslateActivities.greet_in_spanish,
+        name,
+        start_to_close_timeout=timedelta(seconds=5),
+    )
+
+    return greeting
+```
+
+As you can see in the example, the `start_to_close_timeout` option was set to a value of five seconds. Its value should be longer than the maximum amount of time you think the execution of the Activity should take. It essentially is saying "once a Worker starts executing this Activity, how long are we willing to wait before assuming it failed?". This allows the Temporal Cluster to detect a Worker that crashed, in which case it will consider that attempt failed, and will create another task that a different Worker could pick up. You should note that it is required that either Start-to-Close timeout or Schedule-to-Close timeout is set. For this course you will use Start-to-Close. There are [other types of timeouts](https://docs.temporal.io/tags/timeouts) that you can potentially set here, but they're less frequently used and not relevant to this course.
+
+###### Executing The Activity and Retrieving the Result
+
+You will call the `workflow.execute_activity_method` function to request execution of the Activity. The first argument to this function is the function/method that defines your Activity. If your Activity takes an input parameter, you will supply it as the second argument. The remaining arguments are the various options you wish to set. The `start_to_close_timeout` option is set to five seconds here.
+
+```python
+greeting = await workflow.execute_activity_method(
+    TranslateActivities.greet_in_spanish,
+    name,
+    start_to_close_timeout=timedelta(seconds=5),
+)
+```
+
+> Note: `workflow.execute_activity_method` should be used when the Activity is implemented as a class. When the Activity is implemented as a function, as shown in the `greet_in_french` example in the previous section, you would use the `execute_activity` function.
+
+The Workflow does not execute the activity. That is, it does not invoke the Activity Function. Instead, it makes a request to the Temporal Cluster, asking it to _schedule_ execution of the Activity.
+
+The call to `execute_activity_method` is a blocking call that assigns the result from the Activity to the variable `greeting` once the Activity has completed.
+
+Although `execute_activity_method` is a synchronous call you can execute Activities asynchronously using the `start_activity_method`, which will return an `ActivityHandle`. From there you can await the handle whenever you are ready to retrieve the result.
+
+```python
+greeting_handle = workflow.start_activity_method(
+    TranslateActivities.greet_in_spanish,
+    name,
+    start_to_close_timeout=timedelta(seconds=5)
+)
+
+greeting = await greeting_handle
+```
+
+For this course you will be executing activities using `execute_activity_method`.
+
+###### Putting it All Together
+
+This example shows the Definition of a Workflow that requests execution of an Activity and retrieves its result in a single statement.
+
+```python
+from datetime import timedelta
+from temporalio import workflow
+
+# Import activity, passing it through the sandbox without reloading the module
+with workflow.unsafe.imports_passed_through():
+    from translate import TranslateActivities
+
+
+@workflow.defn
+class GreetSomeone:
+    @workflow.run
+    async def run(self, name: str) -> str:
+        greeting = await workflow.execute_activity_method(
+            TranslateActivities.greet_in_spanish,
+            name,
+            start_to_close_timeout=timedelta(seconds=5),
+        )
+
+        farewell = await workflow.execute_activity_method(
+            TranslateActivities.farewell_in_spanish,
+            name,
+            start_to_close_timeout=timedelta(seconds=5),
+        )
+
+        return f"{greeting}\n{farewell}"
+```
+
+#### Using Appropriate Timeouts
+
+When working with Temporal, it is important to choose timeout values that match your actual use case rather than copying example values directly from tutorials or sample code. It's easy to paste relevant code from online or AI and not change it, but be careful when doing that, especially regarding timeouts. 
+
+Consider:
+
+```python
+# Start-to-Close Timeout should be set a little longer than the maximum
+# length of time you expect for the Activity to complete successfully
+result = await workflow.execute_activity_method(
+    MyActivities.execute,
+    input,
+    start_to_close_timeout=timedelta(seconds=5),
+)
+```
+
+A value of 5 seconds may be appropriate for a simple Hello World Activity, but if the Activity later evolves to call remote services, process files, or query databases, it may begin taking considerably longer. If the timeout is set too low, Activities may fail and retry unnecessarily.
+
+Timeouts should also not be excessively long. Temporal uses the timeout to detect crashed or hung Workers. If the timeout is too large, Temporal will take longer to detect failures and recover, reducing throughput and delaying retries. In practice, the Start-to-Close Timeout should generally be set slightly longer than the slowest successful execution you reasonably expect for that Activity.
