@@ -183,8 +183,12 @@
       "bases:Create new base": false
     }
   },
-  "active": "1b1458f175c41ec7",
+  "active": "458bc8caa7b91658",
   "lastOpenFiles": [
+    "exercises/farewell-workflow/practice/__pycache__/worker.cpython-313.pyc",
+    "exercises/farewell-workflow/practice/__pycache__/translate.cpython-313.pyc",
+    "exercises/farewell-workflow/practice/__pycache__/greeting.cpython-313.pyc",
+    "exercises/farewell-workflow/practice/__pycache__",
     "images/workflow-execution-web-ui.png",
     "temporal.md",
     "exercises/hello-workflow/practice/__pycache__/worker.cpython-313.pyc",
@@ -194,9 +198,6 @@
     "env/lib/python3.13/site-packages/aiohttp-3.9.5.dist-info/licenses/LICENSE.txt",
     "env/lib/python3.13/site-packages/aiohttp-3.9.5.dist-info/top_level.txt",
     "env/lib/python3.13/site-packages/aiohttp-3.9.5.dist-info/licenses",
-    "env/lib/python3.13/site-packages/aiohttp-3.9.5.dist-info/WHEEL",
-    "env/lib/python3.13/site-packages/aiohttp-3.9.5.dist-info/REQUESTED",
-    "env/lib/python3.13/site-packages/aiohttp-3.9.5.dist-info/RECORD",
     "env/lib/python3.13/site-packages/flask/sansio/README.md",
     "env/lib/python3.13/site-packages/temporalio/bridge/sdk-core/sdk-core-protos/protos/api_upstream/README.md",
     "env/lib/python3.13/site-packages/temporalio/bridge/sdk-core/fsm/README.md",
@@ -229,7 +230,6 @@
     "env/lib/python3.13/site-packages/~emporalio/contrib/langsmith/images/langsmith-with-temporal.png",
     "env/lib/python3.13/site-packages/~emporalio/contrib/langsmith/images/langsmith-with-crash-no-temporal.png",
     "env/lib/python3.13/site-packages/~emporalio/contrib/langsmith/images/langsmith-no-temporal.png",
-    "env/lib/python3.13/site-packages/werkzeug/debug/shared/more.png",
-    "env/lib/python3.13/site-packages/werkzeug/debug/shared/less.png"
+    "env/lib/python3.13/site-packages/werkzeug/debug/shared/more.png"
   ]
 }
