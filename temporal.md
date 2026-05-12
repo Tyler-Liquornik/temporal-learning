@@ -797,3 +797,55 @@ result = await workflow.execute_activity_method(
 A value of 5 seconds may be appropriate for a simple Hello World Activity, but if the Activity later evolves to call remote services, process files, or query databases, it may begin taking considerably longer. If the timeout is set too low, Activities may fail and retry unnecessarily.
 
 Timeouts should also not be excessively long. Temporal uses the timeout to detect crashed or hung Workers. If the timeout is too large, Temporal will take longer to detect failures and recover, reducing throughput and delaying retries. In practice, the Start-to-Close Timeout should generally be set slightly longer than the slowest successful execution you reasonably expect for that Activity.
+
+## Handling Activity Failures
+
+#### How Temporal Handles Activity Failure
+
+Temporal's default behavior is to automatically retry an Activity, with a short delay between each attempt, until it either succeeds or is canceled. That means that intermittent failures _require no action on your part_. When a subsequent request succeeds, your code will resume as if the failure never occurred. However, that behavior may not always be desirable, so Temporal allows you to customize it through a custom Retry Policy.
+
+Four properties determine the timing and number of retries:
+
+| Property            | Description                                       | Default Value          |
+| ------------------- | ------------------------------------------------- | ---------------------- |
+| initial_interval    | Duration before the first retry                   | 1 second               |
+| backoff_coefficient | Multiplier used for subsequent retries            | 2.0                    |
+| maximum_interval    | Maximum duration between retries                  | 100 * initial_interval |
+| maximum_attempts    | Maximum number of retry attempts before giving up | 0 (unlimited)          |
+- The `initial_interval` property defines how long after the initial failure the first retry will occur. By default, that's one second.
+- The `backoff_coefficient` is a multiplier, applied to the `initial_interval` value, that's used to calculate the delay between each subsequent attempt. Assuming that you use the defaults for both properties, that means there will be a retry after 1 second, another after 2 seconds, then 4 seconds, 8 seconds and so on. This implements exponential backoff.
+- The `maximum_interval` puts a limit on that delay, and by default it's 100 times the initial interval, which means that the delays would keep increasing as described, but would never exceed 100 seconds.
+- Finally, the `maximum_attempts` specifies the maximum count of retries allowed before marking the Activity as failed, in which case the Workflow can handle the failure according to its business logic.
+
+An example:
+
+```python
+from datetime import timedelta
+from temporalio import workflow
+from temporalio.common import RetryPolicy
+
+# Import Activity, passing it through the sandbox without reloading the module
+with workflow.unsafe.imports_passed_through():
+    from translate import TranslateActivities
+
+
+@workflow.defn
+class GreetSomeone:
+    @workflow.run
+    async def run(self, name: str) -> str:
+        retry_policy = RetryPolicy(
+            initial_interval=timedelta(seconds=15),  # first retry will occur after 15 seconds
+            backoff_coefficient=2.0,                 # double the delay after each retry
+            maximum_interval=timedelta(seconds=160), # up to a maximum of 60 seconds
+            maximum_attempts=100,                    # fail the Activity after 100 attempts
+        )
+
+        greeting = await workflow.execute_activity(
+            TranslateActivities.greet_in_spanish,
+            name,
+            start_to_close_timeout=timedelta(seconds=5),
+            retry_policy=retry_policy,
+        )
+
+        return f"{greeting}"
+```
